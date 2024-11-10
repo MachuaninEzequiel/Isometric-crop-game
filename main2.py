@@ -9,7 +9,6 @@ grid_width, grid_height = 10, 10
 GROWTH_DURATION = 5  
 scale_factor = 2  
 
-# Define colors
 COLOR_EMPTY = (200, 200, 200)
 COLOR_PLANTED = (0, 255, 0)
 COLOR_READY = (255, 255, 0)
