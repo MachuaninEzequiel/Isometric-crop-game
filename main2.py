@@ -73,6 +73,9 @@ selected_plant_type = "Plant 1"
 inventory_capacity = 30
 coins = 100
 
+def total_plants():
+    return sum(data["quantity"] for data in PLANT_TYPES.values())
+
 def toggle_inventory():
     global inventory_visible
     inventory_visible = not inventory_visible
@@ -104,16 +107,24 @@ def plant_crop(grid_x, grid_y):
 def collect_crop(x, y):
     if crops[x][y] and crops[x][y].state == 'ready':
         plant_type = crops[x][y].plant_type
-        PLANT_TYPES[plant_type]["quantity"] += 2  
-        print(f"Collected a {plant_type} at ({x}, {y})")
-        crops[x][y] = None  
+        if total_plants() < inventory_capacity:
+            PLANT_TYPES[plant_type]["quantity"] += 2  
+            print(f"Collected a {plant_type} at ({x}, {y})")
+            crops[x][y] = None  
+        else:
+            print("Inventory full! Cannot collect more.") 
 
 def buy_plant(plant_type):
     global coins
-    if coins >= PLANT_TYPES[plant_type]["price"]:
-        PLANT_TYPES[plant_type]["quantity"] += 1
-        coins -= PLANT_TYPES[plant_type]["price"]
-        print(f"Bought 1 unit of {plant_type} for {PLANT_TYPES[plant_type]['price']} coins.")
+    if total_plants() < inventory_capacity:
+        if coins >= PLANT_TYPES[plant_type]["price"]:
+            PLANT_TYPES[plant_type]["quantity"] += 1
+            coins -= PLANT_TYPES[plant_type]["price"]
+            print(f"Bought 1 unit of {plant_type} for {PLANT_TYPES[plant_type]['price']} coins.")
+        else:
+            print("Not enough coins.")
+    else:
+        print("Inventory full! Cannot buy more.")
 
 def sell_plant(plant_type):
     global coins
@@ -129,6 +140,33 @@ def expand_inventory():
         inventory_capacity += 10
         coins -= expansion_cost
         print("Inventory expanded by 10 slots.")
+    else:
+        print("Not enough coins to expand inventory.")
+
+def handle_shop_click(mouse_pos):
+    font = pygame.font.Font(None, 24)
+    y_offset = 60
+    for plant_type, data in PLANT_TYPES.items():
+        buy_rect = font.render(f"Buy {plant_type}: {data['price']} coins", True, (255, 255, 255)).get_rect()
+        buy_rect.topleft = (810, y_offset)
+        if buy_rect.collidepoint(mouse_pos):
+            buy_plant(plant_type)
+            return
+        y_offset += 30
+    
+    y_offset += 10
+    for plant_type, data in PLANT_TYPES.items():
+        sell_rect = font.render(f"Sell {plant_type}: {data['price']} coins", True, (200, 200, 200)).get_rect()
+        sell_rect.topleft = (810, y_offset)
+        if sell_rect.collidepoint(mouse_pos):
+            sell_plant(plant_type)
+            return
+        y_offset += 30
+
+    expand_rect = font.render(f"Inventory+: 50 coins", True, (0, 255, 0)).get_rect()
+    expand_rect.topleft = (810, y_offset + 20)
+    if expand_rect.collidepoint(mouse_pos):
+        expand_inventory()
 
 def main():
     global coins
