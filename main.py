@@ -6,14 +6,13 @@ pygame.init()
 screen = pygame.display.set_mode((1000, 800))
 tile_width, tile_height = 32, 16
 grid_width, grid_height = 10, 10
-GROWTH_DURATION = 5  
-scale_factor = 2  
+GROWTH_DURATION = 5
+scale_factor = 2
 
 COLOR_EMPTY = (200, 200, 200)
 COLOR_READY = (255, 255, 0)
 COLOR_HIGHLIGHT = (150, 150, 150)
 
-# Definición de colores y rarezas para cada tipo de planta
 PLANT_TYPES = {
     "Plant 1": {"color": (0, 255, 0), "quantity": 10, "rarity": "common", "price": 5},
     "Plant 2": {"color": (0, 0, 255), "quantity": 10, "rarity": "rare", "price": 10},
@@ -26,7 +25,6 @@ RARENESS_COLORS = {
     "epic": (255, 120, 120)
 }
 
-# Inventario inicial de agua y robots
 inventory = {
     "water": 10,
     "robots": 0
@@ -124,6 +122,7 @@ def toggle_shop():
     global shop_visible
     shop_visible = not shop_visible
 
+
 def select_item(mouse_pos):
     global selected_item
     font = pygame.font.Font(None, 24)
@@ -157,12 +156,11 @@ def collect_crop(x, y):
     if crops[x][y] and crops[x][y].state == 'ready':
         plant_type = crops[x][y].plant_type
         if total_plants() < inventory_capacity:
-            PLANT_TYPES[plant_type]["quantity"] += 2  
+            PLANT_TYPES[plant_type]["quantity"] += 2
             print(f"Collected a {plant_type} at ({x}, {y})")
-            crops[x][y] = None  
+            crops[x][y] = None
         else:
-            print("Inventory full! Cannot collect more.") 
-
+            print("Inventory full! Cannot collect more.")
 
 def sell_plant(plant_type):
     global coins
@@ -191,6 +189,31 @@ def buy_item(item):
     else:
         print("Inventory full! Cannot buy more.")
 
+
+def select_shop_item(mouse_pos):
+    """ Selecciona un ítem en la tienda para comprar o vender, dependiendo de la acción elegida """
+    font = pygame.font.Font(None, 24)
+    y_offset = 60
+    for item in PLANT_TYPES.keys():
+        # Área de compra
+        buy_rect = font.render(f"Buy {item}: {PLANT_TYPES[item]['price']} coins", True, (255, 255, 255)).get_rect()
+        buy_rect.topleft = (810, y_offset)
+        if buy_rect.collidepoint(mouse_pos):
+            buy_item(item)  # Compra el ítem
+            return
+        y_offset += 30
+
+    y_offset += 10  # Espacio adicional entre secciones de compra y venta
+
+    for item in PLANT_TYPES.keys():
+        # Área de venta
+        sell_rect = font.render(f"Sell {item}: {PLANT_TYPES[item]['price']} coins", True, (200, 200, 200)).get_rect()
+        sell_rect.topleft = (810, y_offset)
+        if sell_rect.collidepoint(mouse_pos):
+            sell_plant(item)  # Vende el ítem
+            return
+        y_offset += 30
+
 def main():
     global coins
     running = True
@@ -217,15 +240,14 @@ def main():
                 elif event.key == pygame.K_s:
                     toggle_shop()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
+                if event.button == 1:  # Clic izquierdo
                     if inventory_visible:
                         select_item((mouse_x, mouse_y))
                     elif shop_visible:
-                        buy_item(selected_item)
-                        sell_plant(selected_item)
+                        select_shop_item((mouse_x, mouse_y))  # Comprar o vender el ítem clicado
                     elif highlighted_tile:
                         plant_crop(grid_x, grid_y)
-                elif event.button == 3:  # Right click
+                elif event.button == 3:  # Clic derecho
                     if highlighted_tile:
                         collect_crop(grid_x, grid_y)
 
@@ -236,61 +258,79 @@ def main():
 
         screen.fill((0, 0, 0))
         
+        scaled_tile_width = tile_width * scale_factor
+        scaled_tile_height = tile_height * scale_factor
+
         for x in range(grid_width):
             for y in range(grid_height):
                 screen_x, screen_y = iso_to_screen(x, y)
-                if highlighted_tile == (x, y):
-                    color = COLOR_HIGHLIGHT
-                elif crops[x][y]:
-                    if crops[x][y].state == 'ready':
+                if crops[x][y]:
+                    crop = crops[x][y]
+                    if crop.state == 'ready':
                         color = COLOR_READY
                     else:
-                        color = PLANT_TYPES[crops[x][y].plant_type]["color"]
+                        color = PLANT_TYPES[crop.plant_type]["color"]
                 else:
                     color = COLOR_EMPTY
-                pygame.draw.polygon(screen, color, [(screen_x, screen_y), (screen_x + tile_width, screen_y + tile_height // 2),
-                                                    (screen_x, screen_y + tile_height), (screen_x - tile_width, screen_y + tile_height // 2)])
 
-        font = pygame.font.Font(None, 24)
+                pygame.draw.polygon(screen, color, [
+                    (screen_x, screen_y),
+                    (screen_x + scaled_tile_width // 2, screen_y + scaled_tile_height // 2),
+                    (screen_x, screen_y + scaled_tile_height),
+                    (screen_x - scaled_tile_width // 2, screen_y + scaled_tile_height // 2)
+                ])
+
+                if highlighted_tile == (x, y):
+                    pygame.draw.polygon(screen, COLOR_HIGHLIGHT, [
+                        (screen_x, screen_y),
+                        (screen_x + scaled_tile_width // 2, screen_y + scaled_tile_height // 2),
+                        (screen_x, screen_y + scaled_tile_height),
+                        (screen_x - scaled_tile_width // 2, screen_y + scaled_tile_height // 2)
+                    ], 3)
+
+        # Mostrar inventario si está visible
         if inventory_visible:
-            pygame.draw.rect(screen, (50, 50, 50), (800, 50, 180, 200))
-            font = pygame.font.Font(None, 24)
+            inventory_rect = pygame.Rect(650, 50, 300, 500)
+            pygame.draw.rect(screen, (50, 50, 50), inventory_rect)
             y_offset = 60
-            for plant_type, data in PLANT_TYPES.items():
-                color = RARENESS_COLORS[data["rarity"]]
-                text = font.render(f"{plant_type} (x{data['quantity']})", True, color)
-                screen.blit(text, (810, y_offset))
+            font = pygame.font.Font(None, 24)
+            for item, data in PLANT_TYPES.items():
+                text = font.render(f"{item}: {data['quantity']}", True, (255, 255, 255))
+                screen.blit(text, (660, y_offset))
                 y_offset += 30
-            text = font.render(f"Coins: {coins}", True, (255, 255, 0))
-            screen.blit(text, (810, y_offset + 20))
-            text = font.render(f"Capacity: {inventory_capacity}", True, (255, 255, 0))
-            screen.blit(text, (810, y_offset + 40))
-            text = font.render(f"Water: {inventory['water']}",True, (255, 255, 0))
-            screen.blit(text, (810, y_offset + 60))
-            text = font.render(f"Robots: {inventory['robots']}",True, (255, 255, 0))
-            screen.blit(text, (810, y_offset + 80))
 
+            text = font.render(f"Water: {inventory['water']}", True, (255, 255, 255))
+            screen.blit(text, (660, y_offset))
+            y_offset += 30
+            text = font.render(f"Robots: {inventory['robots']}", True, (255, 255, 255))
+            screen.blit(text, (660, y_offset))
+
+        # Mostrar tienda si está visible
         if shop_visible:
-            pygame.draw.rect(screen, (70, 70, 70), (800, 50, 180, 300))
-            font = pygame.font.Font(None, 24)
+            shop_rect = pygame.Rect(50, 50, 300, 500)
+            pygame.draw.rect(screen, (80, 80, 80), shop_rect)
             y_offset = 60
-            for plant_type, data in PLANT_TYPES.items():
-                text = font.render(f"Buy {plant_type}: {data['price']} coins", True, (255, 255, 255))
-                screen.blit(text, (810, y_offset))
+            font = pygame.font.Font(None, 24)
+            for item, data in PLANT_TYPES.items():
+                text = font.render(f"{item} - Price: {data['price']} coins", True, (255, 255, 255))
+                screen.blit(text, (60, y_offset))
                 y_offset += 30
-            y_offset += 10
-            for plant_type, data in PLANT_TYPES.items():
-                text = font.render(f"Sell {plant_type}: {data['price']} coins", True, (200, 200, 200))
-                screen.blit(text, (810, y_offset))
-                y_offset += 30
-            text = font.render(f"Inventory+: 50 coins", True, (0, 255, 0))
-            screen.blit(text, (810, y_offset + 20))
-            #text = font.render(f"Water: {inventory['water']}",True, (255, 255, 0))
-            #screen.blit(font.render(text, (810, y_offset + 30), (255, 255, 255)))
-            #text = font.render(f"Robots: {inventory['robots']}",True, (255, 255, 0))
-            #screen.blit(font.render(text, (810, y_offset + 40), (255, 255, 255)))
+
+            text = font.render("Water - 5 units for 2 coins", True, (255, 255, 255))
+            screen.blit(text, (60, y_offset))
+            y_offset += 30
+            text = font.render("Robot - 1 unit for 20 coins", True, (255, 255, 255))
+            screen.blit(text, (60, y_offset))
+            y_offset += 30
+            text = font.render(f"Coins: {coins}", True, (255, 255, 0))
+            screen.blit(text, (60, y_offset))
 
         pygame.display.flip()
+        pygame.time.delay(10)
 
-main()
+
+if __name__ == "__main__":
+    main()
+    
 pygame.quit()
+
